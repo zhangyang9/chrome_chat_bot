@@ -1,6 +1,4 @@
 # chrome_chat_bot
-# 同程智能问答助手插件
-# yang6.zhang 2025-02-19
 
 Chrome 浏览器扩展，支持调用私有 AI 大模型进行对话。
 
