@@ -4668,8 +4668,7 @@ class StorageService {
 // 消息列表组件
 class MessageList {
   constructor() {
-    this.container = document.createElement('div');
-    this.container.className = 'tc-message-list';
+    this.container = this.createContainer();
     this.messages = [];
     this.init();
   }
@@ -4705,18 +4704,53 @@ class MessageList {
   render() {
     this.container.innerHTML = '';
     this.messages.forEach(message => {
-      const messageEl = document.createElement('div');
-      messageEl.className = `tc-message tc-message-${message.role}`;
-      if (message.isError) {
-        messageEl.className += ' tc-message-error';
-      }
-      const content = document.createElement('div');
-      content.className = 'tc-message-content';
-      content.innerHTML = marked(message.content);
-      messageEl.appendChild(content);
+      const messageEl = this.createMessageElement(message);
       this.container.appendChild(messageEl);
     });
     this.container.scrollTop = this.container.scrollHeight;
+  }
+  createContainer() {
+    const container = document.createElement('div');
+    container.className = 'tc-message-list';
+    container.style.flex = '1';
+    container.style.overflowY = 'auto';
+    container.style.padding = '16px';
+    container.style.backgroundColor = '#fff';
+    // 添加平滑滚动
+    container.style.scrollBehavior = 'smooth';
+    return container;
+  }
+  createMessageElement(message) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `tc-message tc-message-${message.role}`;
+    wrapper.style.marginBottom = '16px';
+    wrapper.style.maxWidth = '85%';
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.alignItems = message.role === 'user' ? 'flex-end' : 'flex-start';
+    const content = document.createElement('div');
+    content.className = 'tc-message-content';
+    content.style.padding = '12px 16px';
+    content.style.borderRadius = '12px';
+    content.style.fontSize = '14px';
+    content.style.lineHeight = '1.6';
+    content.style.wordBreak = 'break-word';
+    if (message.role === 'user') {
+      content.style.backgroundColor = '#1890ff';
+      content.style.color = '#fff';
+      wrapper.style.marginLeft = 'auto';
+    } else if (message.role === 'assistant') {
+      content.style.backgroundColor = '#f5f5f5';
+      content.style.color = '#1a1a1a';
+      wrapper.style.marginRight = 'auto';
+    } else if (message.isError) {
+      content.style.backgroundColor = '#fff1f0';
+      content.style.color = '#f5222d';
+      content.style.border = '1px solid #ffa39e';
+    }
+    content.textContent = message.content;
+    wrapper.appendChild(content);
+    return wrapper;
   }
 
   // ... 其他方法
@@ -10910,25 +10944,32 @@ class ChatBox {
   createContainer() {
     const container = document.createElement('div');
     container.className = 'tc-chat-container';
-    // 初始状态设为显示
     container.style.display = 'flex';
-    // 确保样式正确应用
     container.style.position = 'fixed';
     container.style.top = '20px';
     container.style.right = '20px';
     container.style.width = '400px';
     container.style.minHeight = '600px';
-    container.style.maxHeight = '90vh';
+    container.style.maxHeight = '80vh'; // 稍微降低最大高度
     container.style.backgroundColor = '#fff';
-    container.style.borderRadius = '8px';
-    container.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
+    container.style.borderRadius = '12px'; // 增加圆角
+    container.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.15)'; // 优化阴影
     container.style.zIndex = '999999';
     container.style.flexDirection = 'column';
+    container.style.overflow = 'hidden'; // 防止内容溢出
+    container.style.border = '1px solid rgba(0, 0, 0, 0.1)'; // 添加边框
+
     return container;
   }
   createModelSelector() {
     const selector = document.createElement('select');
     selector.className = 'tc-model-selector';
+    selector.style.padding = '6px 12px';
+    selector.style.fontSize = '14px';
+    selector.style.borderRadius = '6px';
+    selector.style.border = '1px solid #ddd';
+    selector.style.backgroundColor = '#f5f5f5';
+    selector.style.cursor = 'pointer';
     const models = [{
       value: 'qwen2-72b',
       label: 'Qwen2-72B'
@@ -10953,13 +10994,43 @@ class ChatBox {
   createInputArea() {
     const container = document.createElement('div');
     container.className = 'tc-input-area';
+    container.style.padding = '16px';
+    container.style.borderTop = '1px solid #eee';
+    container.style.backgroundColor = '#f8f9fa';
     const textarea = document.createElement('textarea');
     textarea.className = 'tc-input';
     textarea.placeholder = '请输入您的问题...';
+    textarea.style.width = '100%';
+    textarea.style.minHeight = '80px';
+    textarea.style.padding = '12px';
+    textarea.style.border = '1px solid #ddd';
+    textarea.style.borderRadius = '8px';
+    textarea.style.resize = 'vertical';
+    textarea.style.marginBottom = '12px';
+    textarea.style.fontSize = '14px';
+    textarea.style.lineHeight = '1.6';
+    textarea.style.backgroundColor = '#fff';
     const sendButton = document.createElement('button');
     sendButton.className = 'tc-send-button';
     sendButton.textContent = '发送';
-    sendButton.onclick = () => this.handleSend();
+    sendButton.style.width = '100%';
+    sendButton.style.padding = '10px';
+    sendButton.style.backgroundColor = '#1890ff';
+    sendButton.style.color = '#fff';
+    sendButton.style.border = 'none';
+    sendButton.style.borderRadius = '8px';
+    sendButton.style.cursor = 'pointer';
+    sendButton.style.fontSize = '14px';
+    sendButton.style.fontWeight = '500';
+    sendButton.style.transition = 'background-color 0.2s';
+
+    // 添加悬停效果
+    sendButton.onmouseover = () => {
+      sendButton.style.backgroundColor = '#40a9ff';
+    };
+    sendButton.onmouseout = () => {
+      sendButton.style.backgroundColor = '#1890ff';
+    };
     container.appendChild(textarea);
     container.appendChild(sendButton);
     return container;
@@ -10990,9 +11061,18 @@ class ChatBox {
   render() {
     const header = document.createElement('div');
     header.className = 'tc-header';
+    header.style.padding = '16px';
+    header.style.borderBottom = '1px solid #eee';
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+    header.style.backgroundColor = '#f8f9fa';
     const title = document.createElement('div');
     title.className = 'tc-title';
     title.textContent = '同程智能问答助手';
+    title.style.fontSize = '16px';
+    title.style.fontWeight = '500';
+    title.style.color = '#1a1a1a';
     header.appendChild(title);
     header.appendChild(this.modelSelector);
     this.container.appendChild(header);
@@ -11050,31 +11130,82 @@ class ChatBox {
 
   // 添加 DOM 检查方法
   checkDOMElement() {
-    // 使用 this.container 而不是重新查询
-    const container = this.container;
-    logger_Logger.info('聊天框 DOM 检查', {
-      exists: !!container,
-      inDocument: document.body.contains(container),
-      display: container.style.display,
-      visible: this.visible,
-      dimensions: {
-        width: container.offsetWidth || container.style.width,
-        height: container.offsetHeight || container.style.height
-      },
-      position: {
-        top: container.style.top,
-        right: container.style.right
-      },
-      zIndex: container.style.zIndex,
-      children: {
-        header: !!container.querySelector('.tc-header'),
-        messageList: !!container.querySelector('.tc-message-list'),
-        inputArea: !!container.querySelector('.tc-input-area')
-      },
-      styles: {
-        computed: window.getComputedStyle(container),
-        inline: container.style
+    try {
+      // 检查 container 是否存在
+      if (!this.container) {
+        logger_Logger.error('聊天框容器不存在');
+        return;
       }
+
+      // 检查 container 是否在文档中
+      if (!document.body.contains(this.container)) {
+        logger_Logger.error('聊天框容器不在文档中');
+        return;
+      }
+
+      // 获取基本信息
+      const basicInfo = {
+        exists: true,
+        inDocument: true,
+        display: this.container.style.display,
+        visible: this.visible
+      };
+
+      // 获取尺寸信息
+      const dimensions = {
+        width: this.container.offsetWidth,
+        height: this.container.offsetHeight,
+        clientWidth: this.container.clientWidth,
+        clientHeight: this.container.clientHeight
+      };
+
+      // 获取位置信息
+      const position = {
+        top: this.container.style.top,
+        right: this.container.style.right
+      };
+
+      // 获取子元素信息
+      const children = {
+        header: this.container.querySelector('.tc-header') !== null,
+        messageList: this.container.querySelector('.tc-message-list') !== null,
+        inputArea: this.container.querySelector('.tc-input-area') !== null
+      };
+
+      // 记录完整状态
+      logger_Logger.info('聊天框 DOM 检查', {
+        ...basicInfo,
+        dimensions,
+        position,
+        zIndex: this.container.style.zIndex,
+        children
+      });
+
+      // 检查关键样式是否正确应用
+      this.checkStyles();
+    } catch (error) {
+      logger_Logger.error('DOM 检查失败', error);
+    }
+  }
+  checkStyles() {
+    const requiredStyles = {
+      position: 'fixed',
+      display: this.visible ? 'flex' : 'none',
+      top: '20px',
+      right: '20px',
+      width: '400px',
+      minHeight: '600px',
+      backgroundColor: '#fff',
+      zIndex: '999999'
+    };
+    const currentStyles = {};
+    Object.keys(requiredStyles).forEach(key => {
+      currentStyles[key] = this.container.style[key];
+    });
+    logger_Logger.info('样式检查', {
+      required: requiredStyles,
+      current: currentStyles,
+      matches: Object.keys(requiredStyles).every(key => currentStyles[key] === requiredStyles[key])
     });
   }
 
@@ -11090,42 +11221,75 @@ let chatBox = null;
 
 // 检查聊天框 DOM
 function checkChatBoxDOM() {
-  if (!chatBox || !chatBox.container) {
-    logger_Logger.info('聊天框未初始化');
-    return;
-  }
-  const container = chatBox.container;
-  logger_Logger.info('聊天框 DOM 状态', {
-    exists: !!container,
-    inDocument: document.body.contains(container),
-    visible: chatBox.visible,
-    containerDisplay: container.style.display,
-    containerComputed: window.getComputedStyle(container),
-    containerDimensions: {
-      width: container.offsetWidth,
-      height: container.offsetHeight,
-      clientWidth: container.clientWidth,
-      clientHeight: container.clientHeight
-    },
-    containerPosition: {
-      top: container.style.top,
-      right: container.style.right
-    },
-    containerStyles: {
-      backgroundColor: container.style.backgroundColor,
-      zIndex: container.style.zIndex
+  try {
+    // 检查 chatBox 实例
+    if (!chatBox) {
+      logger_Logger.info('聊天框实例不存在');
+      return;
     }
-  });
+
+    // 检查 container
+    if (!chatBox.container) {
+      logger_Logger.info('聊天框容器不存在');
+      return;
+    }
+
+    // 检查 container 是否在文档中
+    if (!document.body.contains(chatBox.container)) {
+      logger_Logger.info('聊天框容器不在文档中');
+      return;
+    }
+
+    // 获取基本状态
+    const status = {
+      exists: true,
+      inDocument: true,
+      visible: chatBox.visible,
+      display: chatBox.container.style.display
+    };
+
+    // 获取尺寸
+    const dimensions = {
+      offsetWidth: chatBox.container.offsetWidth,
+      offsetHeight: chatBox.container.offsetHeight,
+      clientWidth: chatBox.container.clientWidth,
+      clientHeight: chatBox.container.clientHeight
+    };
+
+    // 获取位置
+    const position = {
+      top: chatBox.container.style.top,
+      right: chatBox.container.style.right
+    };
+
+    // 记录状态
+    logger_Logger.info('聊天框状态检查', {
+      ...status,
+      dimensions,
+      position,
+      styles: {
+        backgroundColor: chatBox.container.style.backgroundColor,
+        zIndex: chatBox.container.style.zIndex
+      }
+    });
+  } catch (error) {
+    logger_Logger.error('状态检查失败', error);
+  }
 }
 
 // 初始化聊天框
-function initChatBox() {
+async function initChatBox() {
   try {
     if (!chatBox) {
+      logger_Logger.info('开始初始化聊天框');
       chatBox = new ChatBox();
-      logger_Logger.info('聊天框初始化成功');
-      // 初始化后检查 DOM
+
+      // 等待一帧以确保 DOM 更新
+      await new Promise(requestAnimationFrame);
+
+      // 检查初始化结果
       checkChatBoxDOM();
+      logger_Logger.info('聊天框初始化成功');
     }
   } catch (error) {
     logger_Logger.error('聊天框初始化失败', error);

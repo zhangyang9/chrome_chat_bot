@@ -8,44 +8,77 @@ let chatBox = null;
 
 // 检查聊天框 DOM
 function checkChatBoxDOM() {
-  if (!chatBox || !chatBox.container) {
-    Logger.info('聊天框未初始化');
-    return;
-  }
-
-  const container = chatBox.container;
-  
-  Logger.info('聊天框 DOM 状态', {
-    exists: !!container,
-    inDocument: document.body.contains(container),
-    visible: chatBox.visible,
-    containerDisplay: container.style.display,
-    containerComputed: window.getComputedStyle(container),
-    containerDimensions: {
-      width: container.offsetWidth,
-      height: container.offsetHeight,
-      clientWidth: container.clientWidth,
-      clientHeight: container.clientHeight
-    },
-    containerPosition: {
-      top: container.style.top,
-      right: container.style.right
-    },
-    containerStyles: {
-      backgroundColor: container.style.backgroundColor,
-      zIndex: container.style.zIndex
+  try {
+    // 检查 chatBox 实例
+    if (!chatBox) {
+      Logger.info('聊天框实例不存在');
+      return;
     }
-  });
+
+    // 检查 container
+    if (!chatBox.container) {
+      Logger.info('聊天框容器不存在');
+      return;
+    }
+
+    // 检查 container 是否在文档中
+    if (!document.body.contains(chatBox.container)) {
+      Logger.info('聊天框容器不在文档中');
+      return;
+    }
+
+    // 获取基本状态
+    const status = {
+      exists: true,
+      inDocument: true,
+      visible: chatBox.visible,
+      display: chatBox.container.style.display
+    };
+
+    // 获取尺寸
+    const dimensions = {
+      offsetWidth: chatBox.container.offsetWidth,
+      offsetHeight: chatBox.container.offsetHeight,
+      clientWidth: chatBox.container.clientWidth,
+      clientHeight: chatBox.container.clientHeight
+    };
+
+    // 获取位置
+    const position = {
+      top: chatBox.container.style.top,
+      right: chatBox.container.style.right
+    };
+
+    // 记录状态
+    Logger.info('聊天框状态检查', {
+      ...status,
+      dimensions,
+      position,
+      styles: {
+        backgroundColor: chatBox.container.style.backgroundColor,
+        zIndex: chatBox.container.style.zIndex
+      }
+    });
+
+  } catch (error) {
+    Logger.error('状态检查失败', error);
+  }
 }
 
 // 初始化聊天框
-function initChatBox() {
+async function initChatBox() {
   try {
     if (!chatBox) {
+      Logger.info('开始初始化聊天框');
       chatBox = new ChatBox();
-      Logger.info('聊天框初始化成功');
-      // 初始化后检查 DOM
+      
+      // 等待一帧以确保 DOM 更新
+      await new Promise(requestAnimationFrame);
+      
+      // 检查初始化结果
       checkChatBoxDOM();
+      
+      Logger.info('聊天框初始化成功');
     }
   } catch (error) {
     Logger.error('聊天框初始化失败', error);

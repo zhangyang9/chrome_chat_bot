@@ -20,20 +20,20 @@ export class ChatBox {
   createContainer() {
     const container = document.createElement('div');
     container.className = 'tc-chat-container';
-    // 初始状态设为显示
     container.style.display = 'flex';
-    // 确保样式正确应用
     container.style.position = 'fixed';
     container.style.top = '20px';
     container.style.right = '20px';
     container.style.width = '400px';
     container.style.minHeight = '600px';
-    container.style.maxHeight = '90vh';
+    container.style.maxHeight = '80vh'; // 稍微降低最大高度
     container.style.backgroundColor = '#fff';
-    container.style.borderRadius = '8px';
-    container.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
+    container.style.borderRadius = '12px'; // 增加圆角
+    container.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.15)'; // 优化阴影
     container.style.zIndex = '999999';
     container.style.flexDirection = 'column';
+    container.style.overflow = 'hidden'; // 防止内容溢出
+    container.style.border = '1px solid rgba(0, 0, 0, 0.1)'; // 添加边框
     
     return container;
   }
@@ -41,6 +41,12 @@ export class ChatBox {
   createModelSelector() {
     const selector = document.createElement('select');
     selector.className = 'tc-model-selector';
+    selector.style.padding = '6px 12px';
+    selector.style.fontSize = '14px';
+    selector.style.borderRadius = '6px';
+    selector.style.border = '1px solid #ddd';
+    selector.style.backgroundColor = '#f5f5f5';
+    selector.style.cursor = 'pointer';
     
     const models = [
       { value: 'qwen2-72b', label: 'Qwen2-72B' },
@@ -62,15 +68,45 @@ export class ChatBox {
   createInputArea() {
     const container = document.createElement('div');
     container.className = 'tc-input-area';
+    container.style.padding = '16px';
+    container.style.borderTop = '1px solid #eee';
+    container.style.backgroundColor = '#f8f9fa';
 
     const textarea = document.createElement('textarea');
     textarea.className = 'tc-input';
     textarea.placeholder = '请输入您的问题...';
+    textarea.style.width = '100%';
+    textarea.style.minHeight = '80px';
+    textarea.style.padding = '12px';
+    textarea.style.border = '1px solid #ddd';
+    textarea.style.borderRadius = '8px';
+    textarea.style.resize = 'vertical';
+    textarea.style.marginBottom = '12px';
+    textarea.style.fontSize = '14px';
+    textarea.style.lineHeight = '1.6';
+    textarea.style.backgroundColor = '#fff';
 
     const sendButton = document.createElement('button');
     sendButton.className = 'tc-send-button';
     sendButton.textContent = '发送';
-    sendButton.onclick = () => this.handleSend();
+    sendButton.style.width = '100%';
+    sendButton.style.padding = '10px';
+    sendButton.style.backgroundColor = '#1890ff';
+    sendButton.style.color = '#fff';
+    sendButton.style.border = 'none';
+    sendButton.style.borderRadius = '8px';
+    sendButton.style.cursor = 'pointer';
+    sendButton.style.fontSize = '14px';
+    sendButton.style.fontWeight = '500';
+    sendButton.style.transition = 'background-color 0.2s';
+
+    // 添加悬停效果
+    sendButton.onmouseover = () => {
+      sendButton.style.backgroundColor = '#40a9ff';
+    };
+    sendButton.onmouseout = () => {
+      sendButton.style.backgroundColor = '#1890ff';
+    };
 
     container.appendChild(textarea);
     container.appendChild(sendButton);
@@ -108,10 +144,19 @@ export class ChatBox {
   render() {
     const header = document.createElement('div');
     header.className = 'tc-header';
+    header.style.padding = '16px';
+    header.style.borderBottom = '1px solid #eee';
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+    header.style.backgroundColor = '#f8f9fa';
     
     const title = document.createElement('div');
     title.className = 'tc-title';
     title.textContent = '同程智能问答助手';
+    title.style.fontSize = '16px';
+    title.style.fontWeight = '500';
+    title.style.color = '#1a1a1a';
     
     header.appendChild(title);
     header.appendChild(this.modelSelector);
@@ -181,32 +226,88 @@ export class ChatBox {
 
   // 添加 DOM 检查方法
   checkDOMElement() {
-    // 使用 this.container 而不是重新查询
-    const container = this.container;
-    
-    Logger.info('聊天框 DOM 检查', {
-      exists: !!container,
-      inDocument: document.body.contains(container),
-      display: container.style.display,
-      visible: this.visible,
-      dimensions: {
-        width: container.offsetWidth || container.style.width,
-        height: container.offsetHeight || container.style.height
-      },
-      position: {
-        top: container.style.top,
-        right: container.style.right
-      },
-      zIndex: container.style.zIndex,
-      children: {
-        header: !!container.querySelector('.tc-header'),
-        messageList: !!container.querySelector('.tc-message-list'),
-        inputArea: !!container.querySelector('.tc-input-area')
-      },
-      styles: {
-        computed: window.getComputedStyle(container),
-        inline: container.style
+    try {
+      // 检查 container 是否存在
+      if (!this.container) {
+        Logger.error('聊天框容器不存在');
+        return;
       }
+
+      // 检查 container 是否在文档中
+      if (!document.body.contains(this.container)) {
+        Logger.error('聊天框容器不在文档中');
+        return;
+      }
+
+      // 获取基本信息
+      const basicInfo = {
+        exists: true,
+        inDocument: true,
+        display: this.container.style.display,
+        visible: this.visible
+      };
+
+      // 获取尺寸信息
+      const dimensions = {
+        width: this.container.offsetWidth,
+        height: this.container.offsetHeight,
+        clientWidth: this.container.clientWidth,
+        clientHeight: this.container.clientHeight
+      };
+
+      // 获取位置信息
+      const position = {
+        top: this.container.style.top,
+        right: this.container.style.right
+      };
+
+      // 获取子元素信息
+      const children = {
+        header: this.container.querySelector('.tc-header') !== null,
+        messageList: this.container.querySelector('.tc-message-list') !== null,
+        inputArea: this.container.querySelector('.tc-input-area') !== null
+      };
+
+      // 记录完整状态
+      Logger.info('聊天框 DOM 检查', {
+        ...basicInfo,
+        dimensions,
+        position,
+        zIndex: this.container.style.zIndex,
+        children
+      });
+
+      // 检查关键样式是否正确应用
+      this.checkStyles();
+
+    } catch (error) {
+      Logger.error('DOM 检查失败', error);
+    }
+  }
+
+  checkStyles() {
+    const requiredStyles = {
+      position: 'fixed',
+      display: this.visible ? 'flex' : 'none',
+      top: '20px',
+      right: '20px',
+      width: '400px',
+      minHeight: '600px',
+      backgroundColor: '#fff',
+      zIndex: '999999'
+    };
+
+    const currentStyles = {};
+    Object.keys(requiredStyles).forEach(key => {
+      currentStyles[key] = this.container.style[key];
+    });
+
+    Logger.info('样式检查', {
+      required: requiredStyles,
+      current: currentStyles,
+      matches: Object.keys(requiredStyles).every(
+        key => currentStyles[key] === requiredStyles[key]
+      )
     });
   }
 
