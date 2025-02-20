@@ -10903,14 +10903,27 @@ class ChatBox {
     this.modelSelector = this.createModelSelector();
     this.inputArea = this.createInputArea();
     this.aiService = null;
-    this.visible = false; // 初始状态设为隐藏
-
+    this.visible = true; // 初始状态为显示
+    // this.visible = false; // 初始状态为隐藏
     this.init();
   }
   createContainer() {
     const container = document.createElement('div');
     container.className = 'tc-chat-container';
-    container.style.display = 'none'; // 初始状态隐藏
+    // 初始状态设为显示
+    container.style.display = 'flex';
+    // 确保样式正确应用
+    container.style.position = 'fixed';
+    container.style.top = '20px';
+    container.style.right = '20px';
+    container.style.width = '400px';
+    container.style.minHeight = '600px';
+    container.style.maxHeight = '90vh';
+    container.style.backgroundColor = '#fff';
+    container.style.borderRadius = '8px';
+    container.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.1)';
+    container.style.zIndex = '999999';
+    container.style.flexDirection = 'column';
     return container;
   }
   createModelSelector() {
@@ -10957,6 +10970,9 @@ class ChatBox {
       this.render();
       this.bindEvents();
       document.body.appendChild(this.container);
+
+      // 添加 DOM 检查
+      this.checkDOMElement();
       logger_Logger.info('聊天框初始化成功');
     } catch (error) {
       logger_Logger.error('聊天框初始化失败', error);
@@ -11022,7 +11038,44 @@ class ChatBox {
   toggle() {
     this.visible = !this.visible;
     this.container.style.display = this.visible ? 'flex' : 'none';
-    logger_Logger.info(`聊天框${this.visible ? '显示' : '隐藏'}`);
+    logger_Logger.info(`聊天框切换状态`, {
+      visible: this.visible,
+      display: this.container.style.display,
+      dimensions: {
+        width: this.container.offsetWidth,
+        height: this.container.offsetHeight
+      }
+    });
+  }
+
+  // 添加 DOM 检查方法
+  checkDOMElement() {
+    // 使用 this.container 而不是重新查询
+    const container = this.container;
+    logger_Logger.info('聊天框 DOM 检查', {
+      exists: !!container,
+      inDocument: document.body.contains(container),
+      display: container.style.display,
+      visible: this.visible,
+      dimensions: {
+        width: container.offsetWidth || container.style.width,
+        height: container.offsetHeight || container.style.height
+      },
+      position: {
+        top: container.style.top,
+        right: container.style.right
+      },
+      zIndex: container.style.zIndex,
+      children: {
+        header: !!container.querySelector('.tc-header'),
+        messageList: !!container.querySelector('.tc-message-list'),
+        inputArea: !!container.querySelector('.tc-input-area')
+      },
+      styles: {
+        computed: window.getComputedStyle(container),
+        inline: container.style
+      }
+    });
   }
 
   // ... 其他方法
@@ -11035,12 +11088,44 @@ class ChatBox {
 logger_Logger.info('Content script 开始加载');
 let chatBox = null;
 
+// 检查聊天框 DOM
+function checkChatBoxDOM() {
+  if (!chatBox || !chatBox.container) {
+    logger_Logger.info('聊天框未初始化');
+    return;
+  }
+  const container = chatBox.container;
+  logger_Logger.info('聊天框 DOM 状态', {
+    exists: !!container,
+    inDocument: document.body.contains(container),
+    visible: chatBox.visible,
+    containerDisplay: container.style.display,
+    containerComputed: window.getComputedStyle(container),
+    containerDimensions: {
+      width: container.offsetWidth,
+      height: container.offsetHeight,
+      clientWidth: container.clientWidth,
+      clientHeight: container.clientHeight
+    },
+    containerPosition: {
+      top: container.style.top,
+      right: container.style.right
+    },
+    containerStyles: {
+      backgroundColor: container.style.backgroundColor,
+      zIndex: container.style.zIndex
+    }
+  });
+}
+
 // 初始化聊天框
 function initChatBox() {
   try {
     if (!chatBox) {
       chatBox = new ChatBox();
       logger_Logger.info('聊天框初始化成功');
+      // 初始化后检查 DOM
+      checkChatBoxDOM();
     }
   } catch (error) {
     logger_Logger.error('聊天框初始化失败', error);
@@ -11067,7 +11152,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         initChatBox();
       }
       chatBox.toggle();
-      logger_Logger.info('切换聊天框状态');
+      // 切换后检查 DOM
+      checkChatBoxDOM();
+      logger_Logger.info('切换聊天框状态', {
+        visible: chatBox.visible
+      });
       sendResponse({
         success: true
       });

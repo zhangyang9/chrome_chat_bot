@@ -6,12 +6,46 @@ Logger.info('Content script 开始加载');
 
 let chatBox = null;
 
+// 检查聊天框 DOM
+function checkChatBoxDOM() {
+  if (!chatBox || !chatBox.container) {
+    Logger.info('聊天框未初始化');
+    return;
+  }
+
+  const container = chatBox.container;
+  
+  Logger.info('聊天框 DOM 状态', {
+    exists: !!container,
+    inDocument: document.body.contains(container),
+    visible: chatBox.visible,
+    containerDisplay: container.style.display,
+    containerComputed: window.getComputedStyle(container),
+    containerDimensions: {
+      width: container.offsetWidth,
+      height: container.offsetHeight,
+      clientWidth: container.clientWidth,
+      clientHeight: container.clientHeight
+    },
+    containerPosition: {
+      top: container.style.top,
+      right: container.style.right
+    },
+    containerStyles: {
+      backgroundColor: container.style.backgroundColor,
+      zIndex: container.style.zIndex
+    }
+  });
+}
+
 // 初始化聊天框
 function initChatBox() {
   try {
     if (!chatBox) {
       chatBox = new ChatBox();
       Logger.info('聊天框初始化成功');
+      // 初始化后检查 DOM
+      checkChatBoxDOM();
     }
   } catch (error) {
     Logger.error('聊天框初始化失败', error);
@@ -36,7 +70,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         initChatBox();
       }
       chatBox.toggle();
-      Logger.info('切换聊天框状态');
+      // 切换后检查 DOM
+      checkChatBoxDOM();
+      
+      Logger.info('切换聊天框状态', { visible: chatBox.visible });
       sendResponse({ success: true });
       return true;
     }
