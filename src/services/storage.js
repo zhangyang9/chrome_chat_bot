@@ -69,25 +69,33 @@ export class StorageService {
     }
   }
 
-  // 保存 baseURL
-  static async saveBaseURL(baseURL) {
+  static async saveSettings(settings) {
     try {
-      await chrome.storage.sync.set({ baseURL });
-      Logger.info('保存 baseURL 成功');
+      // 加密敏感配置
+      const encryptedSettings = {
+        ...settings,
+        env: await encrypt(settings.env)
+      };
+      await chrome.storage.sync.set({ settings: encryptedSettings });
     } catch (error) {
-      Logger.error('保存 baseURL 失败', error);
+      Logger.error('保存设置失败', error);
       throw error;
     }
   }
 
-  // 获取 baseURL
-  static async getBaseURL() {
+  static async getSettings() {
     try {
-      const result = await chrome.storage.sync.get('baseURL');
-      return result.baseURL || 'https://api.example.com'; // 默认值
+      const result = await chrome.storage.sync.get('settings');
+      if (!result.settings) return {};
+
+      // 解密敏感配置
+      return {
+        ...result.settings,
+        env: result.settings.env ? await decrypt(result.settings.env) : 'prod'
+      };
     } catch (error) {
-      Logger.error('获取 baseURL 失败', error);
-      return 'https://api.example.com'; // 出错时返回默认值
+      Logger.error('获取设置失败', error);
+      return {};
     }
   }
 

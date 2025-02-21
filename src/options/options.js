@@ -18,7 +18,13 @@ class OptionsPage {
     this.saveApiKeyBtn = document.getElementById('saveApiKey');
     this.testConnectionBtn = document.getElementById('testConnection');
     this.messageDiv = document.getElementById('message');
-    this.baseURLInput = document.getElementById('baseURL');
+    
+    // 新增配置项
+    this.envSelector = document.getElementById('envSelector');
+    this.testModel = document.getElementById('testModel');
+    this.testPrompt = document.getElementById('testPrompt');
+    this.autoSave = document.getElementById('autoSave');
+    this.soundNotification = document.getElementById('soundNotification');
     
     this.init();
   }
@@ -26,16 +32,11 @@ class OptionsPage {
   async init() {
     try {
       const apiKey = await StorageService.getApiKey();
-      const baseURL = await StorageService.getBaseURL();
-      
       if (apiKey) {
         this.apiKeyInput.value = apiKey;
       }
       
-      if (baseURL) {
-        this.baseURLInput.value = baseURL;
-      }
-      
+      await this.loadSettings();
       this.bindEvents();
     } catch (error) {
       Logger.error('选项页面初始化失败', error);
@@ -62,41 +63,58 @@ class OptionsPage {
   async saveApiKey() {
     try {
       const apiKey = this.apiKeyInput.value.trim();
-      const baseURL = this.baseURLInput.value.trim();
-      
       if (!apiKey) {
         return this.showError('请输入 API Key');
       }
       
-      if (!baseURL) {
-        return this.showError('请输入 API 地址');
-      }
-      
       await StorageService.saveApiKey(apiKey);
-      await StorageService.saveBaseURL(baseURL);
-      this.showSuccess('配置保存成功');
+      this.showSuccess('API Key 保存成功');
     } catch (error) {
-      Logger.error('保存配置失败', error);
+      Logger.error('保存 API Key 失败', error);
       this.showError('保存失败，请重试');
     }
   }
   
+  async loadSettings() {
+    const settings = await StorageService.getSettings();
+    this.autoSave.checked = settings.autoSave ?? true;
+    this.soundNotification.checked = settings.soundNotification ?? false;
+    this.envSelector.value = settings.env ?? 'prod';
+  }
+
+  async saveSettings() {
+    const settings = {
+      autoSave: this.autoSave.checked,
+      soundNotification: this.soundNotification.checked,
+      env: this.envSelector.value
+    };
+    await StorageService.saveSettings(settings);
+  }
+  
   async testConnection() {
     try {
+      this.showTestStatus('testing');
       const apiKey = this.apiKeyInput.value.trim();
+      const prompt = this.testPrompt.value.trim() || 'test';
+      const model = this.testModel.value;
+
       if (!apiKey) {
         return this.showError('请先输入并保存 API Key');
       }
-      
+
       const aiService = new AIService(apiKey);
-      await aiService.sendMessage('qwen2-72b', [
-        { role: 'user', content: 'test' }
-      ], () => {});
+      const startTime = Date.now();
       
-      this.showSuccess('连接测试成功');
+      await aiService.sendMessage(model, [
+        { role: 'user', content: prompt }
+      ], (chunk) => {
+        this.appendTestResult(chunk);
+      });
+
+      const duration = Date.now() - startTime;
+      this.showTestStatus('success', duration);
     } catch (error) {
-      Logger.error('连接测试失败', error);
-      this.showError('连接测试失败，请检查 API Key 是否正确');
+      this.showTestStatus('error', null, error.message);
     }
   }
   
@@ -108,6 +126,35 @@ class OptionsPage {
   showSuccess(message) {
     this.messageDiv.className = 'success-message';
     this.messageDiv.textContent = message;
+  }
+
+  showTestStatus(status, duration = null, error = null) {
+    const resultDiv = document.getElementById('testResult');
+    switch(status) {
+      case 'testing':
+        resultDiv.innerHTML = '<div class="loading">测试中...</div>';
+        break;
+      case 'success':
+        resultDiv.innerHTML = `
+          <div class="success">
+            <span>测试成功</span>
+            <span>响应时间: ${duration}ms</span>
+          </div>
+        `;
+        break;
+      case 'error':
+        resultDiv.innerHTML = `
+          <div class="error">
+            <span>测试失败</span>
+            <span>${error}</span>
+          </div>
+        `;
+        break;
+    }
+  }
+
+  appendTestResult(chunk) {
+    // Implementation of appendTestResult method
   }
 }
 

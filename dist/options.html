@@ -79,27 +79,62 @@
 </head>
 <body>
   <div class="container">
-    <h1>同程智能问答助手 - 设置</h1>
-    
-    <div class="form-group">
-      <label for="apiKey">API Key</label>
-      <div class="input-group">
-        <input type="password" id="apiKey" placeholder="请输入您的 API Key">
-        <button id="togglePassword">显示</button>
-        <button id="saveApiKey">保存</button>
-        <button id="testConnection">测试连接</button>
+    <header class="header">
+      <h1>同程智能问答助手 - 设置</h1>
+      <div class="env-switch">
+        <label>环境:</label>
+        <select id="envSelector">
+          <option value="prod">生产环境</option>
+          <option value="test">测试环境</option>
+        </select>
       </div>
-      <div id="message"></div>
-    </div>
-    
-    <div class="form-group">
-      <label for="baseURL">调用地址</label>
-      <div class="input-group">
-        <input type="text" id="baseURL" placeholder="请输入 API 地址">
-        <button id="saveBaseURL">保存</button>
+    </header>
+
+    <div class="settings-section">
+      <h2>API 配置</h2>
+      <div class="form-group">
+        <label for="apiKey">API Key</label>
+        <div class="input-group">
+          <input type="password" id="apiKey" placeholder="请输入您的 API Key">
+          <button id="togglePassword" class="btn-secondary">显示</button>
+          <button id="saveApiKey" class="btn-primary">保存</button>
+        </div>
+        <small class="hint">请妥善保管您的 API Key，不要泄露给他人</small>
       </div>
-      <small class="form-text text-muted">例如: https://oneai.17usoft.com/v1</small>
     </div>
+
+    <div class="settings-section">
+      <h2>连接测试</h2>
+      <div class="test-panel">
+        <div class="test-options">
+          <select id="testModel">
+            <option value="qwen2-72b">Qwen2-72B</option>
+            <option value="deepseek-r1">Deepseek-R1</option>
+          </select>
+          <input type="text" id="testPrompt" placeholder="测试问题(可选)">
+        </div>
+        <button id="testConnection" class="btn-primary">开始测试</button>
+        <div id="testResult" class="test-result"></div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h2>高级设置</h2>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="autoSave">
+          自动保存对话历史
+        </label>
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="soundNotification">
+          开启声音提醒
+        </label>
+      </div>
+    </div>
+
+    <div id="message" class="message-container"></div>
   </div>
   <script src="options.js"></script>
 </body>

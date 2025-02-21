@@ -1769,28 +1769,34 @@ class StorageService {
       return 'qwen2-72b';
     }
   }
-
-  // 保存 baseURL
-  static async saveBaseURL(baseURL) {
+  static async saveSettings(settings) {
     try {
+      // 加密敏感配置
+      const encryptedSettings = {
+        ...settings,
+        env: await encrypt(settings.env)
+      };
       await chrome.storage.sync.set({
-        baseURL
+        settings: encryptedSettings
       });
-      logger_Logger.info('保存 baseURL 成功');
     } catch (error) {
-      logger_Logger.error('保存 baseURL 失败', error);
+      logger_Logger.error('保存设置失败', error);
       throw error;
     }
   }
-
-  // 获取 baseURL
-  static async getBaseURL() {
+  static async getSettings() {
     try {
-      const result = await chrome.storage.sync.get('baseURL');
-      return result.baseURL || 'https://api.example.com'; // 默认值
+      const result = await chrome.storage.sync.get('settings');
+      if (!result.settings) return {};
+
+      // 解密敏感配置
+      return {
+        ...result.settings,
+        env: result.settings.env ? await decrypt(result.settings.env) : 'prod'
+      };
     } catch (error) {
-      logger_Logger.error('获取 baseURL 失败', error);
-      return 'https://api.example.com'; // 出错时返回默认值
+      logger_Logger.error('获取设置失败', error);
+      return {};
     }
   }
 
@@ -7922,26 +7928,15 @@ const API_KEY_SENTINEL = '<Missing Key>';
 ;// ./src/services/api.js
 // API 服务封装
 
-
 class AIService {
   constructor(apiKey) {
-    this.apiKey = apiKey;
-    this.baseURL = null; // 初始化为 null
     this.client = new OpenAI({
       apiKey: apiKey,
       baseURL: 'https://oneai.17usoft.com/v1',
-      // 默认值，生产环境会从配置页面获取
       dangerouslyAllowBrowser: true // 允许在浏览器环境中使用
     });
   }
-  async init() {
-    // 从配置获取 baseURL
-    this.baseURL = await StorageService.getBaseURL();
-  }
   async sendMessage(model, messages, onChunk) {
-    if (!this.baseURL) {
-      await this.init(); // 确保 baseURL 已加载
-    }
     try {
       const response = await this.client.chat.completions.create({
         model: model,
@@ -7978,19 +7973,22 @@ class OptionsPage {
     this.saveApiKeyBtn = document.getElementById('saveApiKey');
     this.testConnectionBtn = document.getElementById('testConnection');
     this.messageDiv = document.getElementById('message');
-    this.baseURLInput = document.getElementById('baseURL');
+
+    // 新增配置项
+    this.envSelector = document.getElementById('envSelector');
+    this.testModel = document.getElementById('testModel');
+    this.testPrompt = document.getElementById('testPrompt');
+    this.autoSave = document.getElementById('autoSave');
+    this.soundNotification = document.getElementById('soundNotification');
     this.init();
   }
   async init() {
     try {
       const apiKey = await StorageService.getApiKey();
-      const baseURL = await StorageService.getBaseURL();
       if (apiKey) {
         this.apiKeyInput.value = apiKey;
       }
-      if (baseURL) {
-        this.baseURLInput.value = baseURL;
-      }
+      await this.loadSettings();
       this.bindEvents();
     } catch (error) {
       options_Logger.error('选项页面初始化失败', error);
@@ -8013,36 +8011,51 @@ class OptionsPage {
   async saveApiKey() {
     try {
       const apiKey = this.apiKeyInput.value.trim();
-      const baseURL = this.baseURLInput.value.trim();
       if (!apiKey) {
         return this.showError('请输入 API Key');
       }
-      if (!baseURL) {
-        return this.showError('请输入 API 地址');
-      }
       await StorageService.saveApiKey(apiKey);
-      await StorageService.saveBaseURL(baseURL);
-      this.showSuccess('配置保存成功');
+      this.showSuccess('API Key 保存成功');
     } catch (error) {
-      options_Logger.error('保存配置失败', error);
+      options_Logger.error('保存 API Key 失败', error);
       this.showError('保存失败，请重试');
     }
   }
+  async loadSettings() {
+    const settings = await StorageService.getSettings();
+    this.autoSave.checked = settings.autoSave ?? true;
+    this.soundNotification.checked = settings.soundNotification ?? false;
+    this.envSelector.value = settings.env ?? 'prod';
+  }
+  async saveSettings() {
+    const settings = {
+      autoSave: this.autoSave.checked,
+      soundNotification: this.soundNotification.checked,
+      env: this.envSelector.value
+    };
+    await StorageService.saveSettings(settings);
+  }
   async testConnection() {
     try {
+      this.showTestStatus('testing');
       const apiKey = this.apiKeyInput.value.trim();
+      const prompt = this.testPrompt.value.trim() || 'test';
+      const model = this.testModel.value;
       if (!apiKey) {
         return this.showError('请先输入并保存 API Key');
       }
       const aiService = new AIService(apiKey);
-      await aiService.sendMessage('qwen2-72b', [{
+      const startTime = Date.now();
+      await aiService.sendMessage(model, [{
         role: 'user',
-        content: 'test'
-      }], () => {});
-      this.showSuccess('连接测试成功');
+        content: prompt
+      }], chunk => {
+        this.appendTestResult(chunk);
+      });
+      const duration = Date.now() - startTime;
+      this.showTestStatus('success', duration);
     } catch (error) {
-      options_Logger.error('连接测试失败', error);
-      this.showError('连接测试失败，请检查 API Key 是否正确');
+      this.showTestStatus('error', null, error.message);
     }
   }
   showError(message) {
@@ -8052,6 +8065,33 @@ class OptionsPage {
   showSuccess(message) {
     this.messageDiv.className = 'success-message';
     this.messageDiv.textContent = message;
+  }
+  showTestStatus(status, duration = null, error = null) {
+    const resultDiv = document.getElementById('testResult');
+    switch (status) {
+      case 'testing':
+        resultDiv.innerHTML = '<div class="loading">测试中...</div>';
+        break;
+      case 'success':
+        resultDiv.innerHTML = `
+          <div class="success">
+            <span>测试成功</span>
+            <span>响应时间: ${duration}ms</span>
+          </div>
+        `;
+        break;
+      case 'error':
+        resultDiv.innerHTML = `
+          <div class="error">
+            <span>测试失败</span>
+            <span>${error}</span>
+          </div>
+        `;
+        break;
+    }
+  }
+  appendTestResult(chunk) {
+    // Implementation of appendTestResult method
   }
 }
 
