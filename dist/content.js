@@ -4659,6 +4659,30 @@ class StorageService {
     }
   }
 
+  // 保存 baseURL
+  static async saveBaseURL(baseURL) {
+    try {
+      await chrome.storage.sync.set({
+        baseURL
+      });
+      logger_Logger.info('保存 baseURL 成功');
+    } catch (error) {
+      logger_Logger.error('保存 baseURL 失败', error);
+      throw error;
+    }
+  }
+
+  // 获取 baseURL
+  static async getBaseURL() {
+    try {
+      const result = await chrome.storage.sync.get('baseURL');
+      return result.baseURL || 'https://api.example.com'; // 默认值
+    } catch (error) {
+      logger_Logger.error('获取 baseURL 失败', error);
+      return 'https://api.example.com'; // 出错时返回默认值
+    }
+  }
+
   // ... 其他存储方法
 }
 ;// ./src/content/MessageList.js
@@ -10881,15 +10905,26 @@ const API_KEY_SENTINEL = '<Missing Key>';
 ;// ./src/services/api.js
 // API 服务封装
 
+
 class AIService {
   constructor(apiKey) {
+    this.apiKey = apiKey;
+    this.baseURL = null; // 初始化为 null
     this.client = new OpenAI({
       apiKey: apiKey,
       baseURL: 'https://oneai.17usoft.com/v1',
+      // 默认值，生产环境会从配置页面获取
       dangerouslyAllowBrowser: true // 允许在浏览器环境中使用
     });
   }
+  async init() {
+    // 从配置获取 baseURL
+    this.baseURL = await StorageService.getBaseURL();
+  }
   async sendMessage(model, messages, onChunk) {
+    if (!this.baseURL) {
+      await this.init(); // 确保 baseURL 已加载
+    }
     try {
       const response = await this.client.chat.completions.create({
         model: model,

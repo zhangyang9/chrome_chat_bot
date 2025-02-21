@@ -69,5 +69,27 @@ export class StorageService {
     }
   }
 
+  // 保存 baseURL
+  static async saveBaseURL(baseURL) {
+    try {
+      await chrome.storage.sync.set({ baseURL });
+      Logger.info('保存 baseURL 成功');
+    } catch (error) {
+      Logger.error('保存 baseURL 失败', error);
+      throw error;
+    }
+  }
+
+  // 获取 baseURL
+  static async getBaseURL() {
+    try {
+      const result = await chrome.storage.sync.get('baseURL');
+      return result.baseURL || 'https://api.example.com'; // 默认值
+    } catch (error) {
+      Logger.error('获取 baseURL 失败', error);
+      return 'https://api.example.com'; // 出错时返回默认值
+    }
+  }
+
   // ... 其他存储方法
 } 

@@ -18,6 +18,7 @@ class OptionsPage {
     this.saveApiKeyBtn = document.getElementById('saveApiKey');
     this.testConnectionBtn = document.getElementById('testConnection');
     this.messageDiv = document.getElementById('message');
+    this.baseURLInput = document.getElementById('baseURL');
     
     this.init();
   }
@@ -25,8 +26,14 @@ class OptionsPage {
   async init() {
     try {
       const apiKey = await StorageService.getApiKey();
+      const baseURL = await StorageService.getBaseURL();
+      
       if (apiKey) {
         this.apiKeyInput.value = apiKey;
+      }
+      
+      if (baseURL) {
+        this.baseURLInput.value = baseURL;
       }
       
       this.bindEvents();
@@ -55,14 +62,21 @@ class OptionsPage {
   async saveApiKey() {
     try {
       const apiKey = this.apiKeyInput.value.trim();
+      const baseURL = this.baseURLInput.value.trim();
+      
       if (!apiKey) {
         return this.showError('请输入 API Key');
       }
       
+      if (!baseURL) {
+        return this.showError('请输入 API 地址');
+      }
+      
       await StorageService.saveApiKey(apiKey);
-      this.showSuccess('API Key 保存成功');
+      await StorageService.saveBaseURL(baseURL);
+      this.showSuccess('配置保存成功');
     } catch (error) {
-      Logger.error('保存 API Key 失败', error);
+      Logger.error('保存配置失败', error);
       this.showError('保存失败，请重试');
     }
   }
