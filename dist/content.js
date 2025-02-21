@@ -10906,22 +10906,6 @@ class AIService {
     }
   }
 }
-;// ./src/utils/errorHandler.js
-// 错误处理工具
-class ErrorHandler {
-  static handle(error, context) {
-    Logger.error(`${context}: ${error.message}`, error);
-
-    // 根据错误类型显示不同的用户提示
-    if (error.name === 'NetworkError') {
-      return '网络连接失败，请检查网络设置';
-    }
-    if (error.name === 'AuthenticationError') {
-      return 'API密钥无效，请在设置中重新配置';
-    }
-    return '发生未知错误，请稍后重试';
-  }
-}
 ;// ./src/content/ChatBox.js
 
 
@@ -10933,12 +10917,24 @@ class ErrorHandler {
 class ChatBox {
   constructor() {
     this.container = this.createContainer();
+    this.floatIcon = this.createFloatIcon();
     this.messageList = new MessageList();
     this.modelSelector = this.createModelSelector();
     this.inputArea = this.createInputArea();
     this.aiService = null;
-    this.visible = true; // 初始状态为显示
-    // this.visible = false; // 初始状态为隐藏
+
+    // 简化状态管理
+    this.state = {
+      isHidden: false,
+      position: {
+        top: '20px',
+        right: '20px'
+      },
+      size: {
+        width: '400px',
+        height: '600px'
+      }
+    };
     this.init();
   }
   createContainer() {
@@ -11024,6 +11020,9 @@ class ChatBox {
     sendButton.style.fontWeight = '500';
     sendButton.style.transition = 'background-color 0.2s';
 
+    // 添加点击事件处理
+    sendButton.addEventListener('click', () => this.handleSend());
+
     // 添加悬停效果
     sendButton.onmouseover = () => {
       sendButton.style.backgroundColor = '#40a9ff';
@@ -11059,42 +11058,146 @@ class ChatBox {
     this.modelSelector.value = selectedModel;
   }
   render() {
-    const header = document.createElement('div');
-    header.className = 'tc-header';
-    header.style.padding = '16px';
-    header.style.borderBottom = '1px solid #eee';
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.alignItems = 'center';
-    header.style.backgroundColor = '#f8f9fa';
-    const title = document.createElement('div');
-    title.className = 'tc-title';
-    title.textContent = '同程智能问答助手';
-    title.style.fontSize = '16px';
-    title.style.fontWeight = '500';
-    title.style.color = '#1a1a1a';
-    header.appendChild(title);
-    header.appendChild(this.modelSelector);
+    const header = this.createHeader();
     this.container.appendChild(header);
     this.container.appendChild(this.messageList.container);
     this.container.appendChild(this.inputArea);
   }
+  createHeader() {
+    const header = document.createElement('div');
+    header.className = 'tc-header';
+    Object.assign(header.style, {
+      padding: '12px 16px',
+      // 增加内边距
+      borderBottom: '1px solid #eaeaea',
+      // 更柔和的边框颜色
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: '#ffffff',
+      // 纯白背景
+      height: '52px',
+      // 稍微增加高度
+      cursor: 'move',
+      userSelect: 'none' // 防止文字被选中
+    });
+
+    // 左侧区域（标题 + 模型选择器）
+    const leftArea = document.createElement('div');
+    leftArea.style.display = 'flex';
+    leftArea.style.alignItems = 'center';
+    leftArea.style.gap = '12px'; // 增加间距
+    leftArea.style.flex = '1';
+
+    // 标题
+    const title = document.createElement('div');
+    title.className = 'tc-title';
+    title.textContent = '同程智能问答助手';
+    Object.assign(title.style, {
+      fontSize: '15px',
+      fontWeight: '600',
+      color: '#262626',
+      whiteSpace: 'nowrap',
+      letterSpacing: '0.2px' // 增加字间距
+    });
+
+    // 优化模型选择器样式
+    Object.assign(this.modelSelector.style, {
+      height: '32px',
+      // 固定高度
+      padding: '0 12px',
+      fontSize: '13px',
+      borderRadius: '6px',
+      border: '1px solid #e8e8e8',
+      backgroundColor: '#fafafa',
+      color: '#595959',
+      cursor: 'pointer',
+      outline: 'none',
+      transition: 'all 0.2s ease',
+      minWidth: '120px' // 固定最小宽度
+    });
+
+    // 添加模型选择器悬停效果
+    this.modelSelector.addEventListener('mouseover', () => {
+      this.modelSelector.style.borderColor = '#d9d9d9';
+      this.modelSelector.style.backgroundColor = '#f5f5f5';
+    });
+    this.modelSelector.addEventListener('mouseout', () => {
+      this.modelSelector.style.borderColor = '#e8e8e8';
+      this.modelSelector.style.backgroundColor = '#fafafa';
+    });
+    leftArea.appendChild(title);
+    leftArea.appendChild(this.modelSelector);
+
+    // 右侧关闭按钮
+    const controls = document.createElement('div');
+    controls.className = 'tc-controls';
+    controls.style.marginLeft = '16px'; // 与左侧保持距离
+
+    const closeBtn = this.createControlButton('×', '关闭');
+    Object.assign(closeBtn.style, {
+      width: '28px',
+      // 增加按钮大小
+      height: '28px',
+      fontSize: '18px',
+      // 增加图标大小
+      borderRadius: '6px',
+      color: '#8c8c8c'
+    });
+    closeBtn.addEventListener('click', () => this.hide());
+    controls.appendChild(closeBtn);
+    header.appendChild(leftArea);
+    header.appendChild(controls);
+    return header;
+  }
   bindEvents() {
+    // 绑定模型选择器事件
     this.modelSelector.addEventListener('change', async e => {
       await StorageService.saveSelectedModel(e.target.value);
     });
-    this.inputArea.querySelector('textarea').addEventListener('keypress', e => {
+
+    // 绑定回车发送
+    const textarea = this.inputArea.querySelector('textarea');
+    textarea.addEventListener('keypress', e => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         this.handleSend();
       }
     });
+
+    // 绑定发送按钮点击事件（作为备份）
+    const sendButton = this.inputArea.querySelector('.tc-send-button');
+    sendButton.addEventListener('click', () => this.handleSend());
+
+    // 双击标题栏最大化
+    const header = this.container.querySelector('.tc-header');
+    header.addEventListener('dblclick', e => {
+      // 不触发控制按钮的双击
+      if (!e.target.closest('.tc-controls')) {
+        this.maximize();
+      }
+    });
+
+    // 拖拽功能
+    this.enableDrag();
   }
   async handleSend() {
-    const textarea = this.inputArea.querySelector('textarea');
-    const content = textarea.value.trim();
-    if (!content) return;
     try {
+      const textarea = this.inputArea.querySelector('textarea');
+      const content = textarea.value.trim();
+      if (!content) {
+        logger_Logger.info('输入内容为空');
+        return;
+      }
+      logger_Logger.info('开始发送消息', {
+        content
+      });
+
+      // 禁用输入和发送按钮
+      textarea.disabled = true;
+      const sendButton = this.inputArea.querySelector('.tc-send-button');
+      sendButton.disabled = true;
+      sendButton.style.backgroundColor = '#d9d9d9';
       const userMessage = {
         role: 'user',
         content
@@ -11107,12 +11210,21 @@ class ChatBox {
       }, userMessage];
       await this.aiService.sendMessage(this.modelSelector.value, messages, chunk => this.messageList.appendToLastMessage(chunk));
     } catch (error) {
-      const errorMessage = ErrorHandler.handle(error, '发送消息');
+      logger_Logger.error('发送消息失败', error);
+      const errorMessage = error.message || '发送消息失败';
       this.messageList.addMessage({
         role: 'system',
         content: errorMessage,
         isError: true
       });
+    } finally {
+      // 重新启用输入和发送按钮
+      const textarea = this.inputArea.querySelector('textarea');
+      const sendButton = this.inputArea.querySelector('.tc-send-button');
+      textarea.disabled = false;
+      sendButton.disabled = false;
+      sendButton.style.backgroundColor = '#1890ff';
+      textarea.focus();
     }
   }
   toggle() {
@@ -11209,7 +11321,176 @@ class ChatBox {
     });
   }
 
-  // ... 其他方法
+  // 简化 createControlButton 方法
+  createControlButton(symbol, title) {
+    const button = document.createElement('button');
+    button.className = 'tc-control-button';
+    button.title = title;
+    button.textContent = symbol;
+    Object.assign(button.style, {
+      width: '28px',
+      height: '28px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      border: 'none',
+      borderRadius: '6px',
+      backgroundColor: 'transparent',
+      cursor: 'pointer',
+      fontSize: '18px',
+      color: '#8c8c8c',
+      transition: 'all 0.2s ease',
+      padding: '0',
+      margin: '0'
+    });
+
+    // 优化关闭按钮悬停效果
+    button.addEventListener('mouseover', () => {
+      button.style.backgroundColor = '#fff2f0';
+      button.style.color = '#ff4d4f';
+    });
+    button.addEventListener('mouseout', () => {
+      button.style.backgroundColor = 'transparent';
+      button.style.color = '#8c8c8c';
+    });
+    return button;
+  }
+
+  // 修改拖拽方法
+  enableDrag() {
+    const header = this.container.querySelector('.tc-header');
+    let isDragging = false;
+    let startX, startY;
+    let initialX, initialY;
+    header.addEventListener('mousedown', e => {
+      // 不在控制按钮上开始拖拽
+      if (!e.target.closest('.tc-controls')) {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        initialX = this.container.offsetLeft;
+        initialY = this.container.offsetTop;
+      }
+    });
+    document.addEventListener('mousemove', e => {
+      if (isDragging) {
+        e.preventDefault();
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        this.container.style.left = `${initialX + dx}px`;
+        this.container.style.top = `${initialY + dy}px`;
+      }
+    });
+    document.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        // 保存新位置
+        this.state.position = {
+          top: this.container.style.top,
+          right: this.container.style.right
+        };
+        this.saveState();
+      }
+    });
+  }
+
+  // 修改隐藏方法
+  hide() {
+    // 保存当前状态
+    if (!this.state.isHidden) {
+      this.state.position = {
+        top: this.container.style.top,
+        right: this.container.style.right
+      };
+      this.state.size = {
+        width: this.container.style.width,
+        height: this.container.style.height
+      };
+    }
+
+    // 隐藏对话框
+    this.container.style.display = 'none';
+
+    // 显示悬浮图标
+    this.floatIcon.style.display = 'block';
+    this.state.isHidden = true;
+    this.saveState();
+    logger_Logger.info('聊天框隐藏，显示悬浮图标');
+  }
+
+  // 添加显示方法
+  show() {
+    // 隐藏悬浮图标
+    this.floatIcon.style.display = 'none';
+
+    // 显示对话框
+    this.container.style.display = 'flex';
+    this.container.style.width = this.state.size.width;
+    this.container.style.height = this.state.size.height;
+    this.container.style.top = this.state.position.top;
+    this.container.style.right = this.state.position.right;
+
+    // 显示所有内容
+    this.messageList.container.style.display = 'block';
+    this.inputArea.style.display = 'block';
+    this.state.isHidden = false;
+    this.saveState();
+    logger_Logger.info('显示聊天框');
+  }
+
+  // 修改销毁方法
+  destroy() {
+    if (this.container && this.container.parentNode) {
+      this.container.parentNode.removeChild(this.container);
+    }
+    if (this.floatIcon && this.floatIcon.parentNode) {
+      this.floatIcon.parentNode.removeChild(this.floatIcon);
+    }
+  }
+
+  // 修改状态保存方法
+  saveState() {
+    StorageService.saveChatBoxState({
+      isHidden: this.state.isHidden,
+      position: this.state.position,
+      size: this.state.size
+    });
+  }
+
+  // 创建悬浮图标
+  createFloatIcon() {
+    const icon = document.createElement('div');
+    icon.className = 'tc-float-icon';
+    Object.assign(icon.style, {
+      position: 'fixed',
+      top: '20px',
+      right: '20px',
+      width: '15px',
+      height: '15px',
+      borderRadius: '50%',
+      backgroundColor: '#1890ff',
+      cursor: 'pointer',
+      display: 'none',
+      zIndex: '999999',
+      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+      transition: 'all 0.3s'
+    });
+
+    // 添加悬停效果
+    icon.addEventListener('mouseover', () => {
+      icon.style.transform = 'scale(1.1)';
+      icon.style.backgroundColor = '#40a9ff';
+    });
+    icon.addEventListener('mouseout', () => {
+      icon.style.transform = 'scale(1)';
+      icon.style.backgroundColor = '#1890ff';
+    });
+
+    // 点击显示对话框
+    icon.addEventListener('click', () => this.show());
+    document.body.appendChild(icon);
+    return icon;
+  }
 }
 ;// ./src/content/content.js
 
